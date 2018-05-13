@@ -59,20 +59,23 @@ var SQ_STATUS_PAC_ON_RED_LOCK = 12;
 var SQ_STATUS_PAC_ON_RED_KEY = 13;
 var SQ_STATUS_RED_LOCK = 14;
 var SQ_STATUS_RED_KEY = 15;
-var SQ_STATUS_WALL = 50;
 
 var SQ_STATUS_TREASURE_BAD = 20;
 var SQ_STATUS_TREASURE_MEDIUM = 21;
 var SQ_STATUS_TREASURE_GOOD = 22;
 
+var SQ_STATUS_WALL = 50;
+
 var RED = 1;
 var GREEN = 2;
 var WALL = 1;
+var WALL_CHANCE = 10; // target percentage of number of walls in random wall mode
 
 var SQ_STATUS_BLANK = 100;
 
 var TREASURE_INDEX_POSITION = 0;
 var TREASURE_INDEX_TYPE = 1;
+var TREASURE_INDEX_ICON = 2;    // appearance
 
 var NPC_INDEX_POSITION = 0;
 var NPC_INDEX_NAME = 1;
@@ -82,13 +85,16 @@ var TREASURE_TYPE_MEDIUM = 2;
 var TREASURE_TYPE_GOOD = 3;
 var TREASURE_TYPE_RED_KEY = 5;
 
+var TREASURE_ICON_1 = "<img src= 'treasure 1.jpg'>";
+var TREASURE_ICON_2 = "<img src= 'treasure 2.jpg'>";
+var TREASURE_ICON_3 = "<img src= 'treasure 3.jpg'>";
+var TREASURE_ICON_4 = "<img src= 'treasure 4.jpg'>";
+
 var NPC_ICHABOD_TRISKET = 1;
 var NPC_FLOJO_SUMMERSTREAM = 2
 
 var ICHABOD_TRISKET_CONVERSATION= "How's it hangin' "+yourCharacter+".\nIn future updates of the game I'll be able to sell you stuff."
 var FLOJO_SUMMERSTREAM_CONVERSATION= "Peace out "+yourCharacter+".\nIn future updates of the game you'll be able to sell me stuff."
-
-var ICON_TREASURE = "<img src='adlani grass.jpg'>";
 
 var treasures = new Array;
 var NPCs = new Array;
@@ -153,6 +159,7 @@ function chooseNoah() {
   if (yourCharacter != "") {
     alert("You already chose " + yourCharacter + ".");
   } else {
+    console.log("Noah chosen");
     denchSound.play();
     document.getElementById("title").style.visibility = "visible";
     characterSelector.parentNode.removeChild(characterSelector);
@@ -491,16 +498,6 @@ function processEvent(pos, code)
 
       break;
 
-      // case FIND_TREASURE_EVENT:
-      //  if (currentSquare==) return;
-      //
-      //  currentSquare=currentSquare-boardSize;
-      //  playerDirection = UP;
-      //  processSquare(currentSquare);
-      //  processSquare(currentSquare+boardSize);
-      //
-      //  break;
-
     default:
 
   }
@@ -761,21 +758,18 @@ function processSquare(pos)
 
     case SQ_STATUS_TREASURE_BAD:
 
-      // show bad treasure
-      showTreasure(pos)
+      // shouldn't need to check treasure index first because we know status is treasure
+      squares[pos].innerHTML = treasures[getTreasureIndex(pos)][TREASURE_INDEX_ICON];
       break;
-
 
     case SQ_STATUS_TREASURE_MEDIUM:
 
-      // process medium
-      showTreasure(pos)
+      squares[pos].innerHTML = treasures[getTreasureIndex(pos)][TREASURE_INDEX_ICON];
       break;
 
     case SQ_STATUS_TREASURE_GOOD:
 
-      // process good
-      showTreasure(pos)
+      squares[pos].innerHTML = treasures[getTreasureIndex(pos)][TREASURE_INDEX_ICON];
       break;
 
     case SQ_STATUS_RED_LOCK:
@@ -785,7 +779,6 @@ function processSquare(pos)
 
     case SQ_STATUS_RED_KEY:
 
-        // showTreasure(pos);
         squares[pos].innerHTML = "<img src= 'red key.jpg'>";
         break;
 
@@ -857,64 +850,88 @@ function processSquare(pos)
 
 }
 
-function showTreasure(pos) {
-  //var squares = document.querySelectorAll('.square');
-  var treasureNum = Math.floor((Math.random() * 4) + 1);
-  switch (treasureNum) {
-    case 1:
-      squares[pos].innerHTML = "<img src='treasure 1.jpg'>";
-    break;
-    case 2:
-      squares[pos].innerHTML = "<img src='treasure 2.jpg'>";
-      break;
-    case 3:
-      squares[pos].innerHTML = "<img src='treasure 3.jpg'>";
-      break;
-    case 4:
-      squares[pos].innerHTML = "<img src='treasure 4.jpg'>";
-      break;
-    default:
+// -----------------------------------------------------------------------------
 
-  }
-}
-// function showNPC(pos,squareStatus) {
-//   //var squares = document.querySelectorAll('.square');
-//
-//   switch (squareStatus) {
-//     case SQ_STATUS_ICHABOD_TRISKET:
-//       squares[pos].innerHTML = "<img src='ichabod trisket grass.jpg'>";
-//       break;
-//     case SQ_STATUS_FLOJO_SUMMERSTREAM:
-//       squares[pos].innerHTML = "<img src='flojo summerstream grass.jpg'>";
-//       break;
-//     default:
-//
-//   }
-//
-// }
-
-// ------------------------------
-function deleteTreasure(pos) {
-  var i = 0;
-  var treasureFound = false;
-
+function getNPCIndex(pos)
+{
   // new pos calcs
   var row = Math.floor(pos/viewSize);
   // calculate offsets from center
   var offsets = getOffsets();
   var anchorPos = pos + (hiddenPadding * boardSize) + (((row + 1) * 2 * hiddenPadding) - hiddenPadding);
   var newPos = anchorPos + (offsets[0]*boardSize) + offsets[1];
-  // console.log("deleteTreasure - Current square is " + currentSquare + "  Pos is " + pos + "  Anchor pos is " + anchorPos + "  row offset is " + offsets[0] + "  Col offset is " + offsets[1] + "  New pos is " + newPos);
 
-  while ((treasureFound == false) && (i < treasures.length)) {
-    if (treasures[i][TREASURE_INDEX_POSITION] == newPos) {
-      treasures.splice(i, 1)
-      treasureFound = true;
-    }
-    else i++
+  console.log ("In getNPCIndex - pos is " + pos + "  New pos is " + newPos);
+
+  var i = 0;
+  var npcFound = false;
+
+  while ((i < NPCs.length) && (npcFound == false))
+  {
+    if (NPCs[i][NPC_INDEX_POSITION] == newPos)
+      npcFound = true;
+    else
+      i++;
+  } // end while
+
+  if (npcFound == true)
+    return i;
+  else {
+    return -1;    // no npc in  pos passed in
   }
+
+}  // end function
+
+// -----------------------------------------------------------------------------
+
+function getTreasureIndex(pos)
+{
+  // new pos calcs
+  var row = Math.floor(pos/viewSize);
+  // calculate offsets from center
+  var offsets = getOffsets();
+  var anchorPos = pos + (hiddenPadding * boardSize) + (((row + 1) * 2 * hiddenPadding) - hiddenPadding);
+  var newPos = anchorPos + (offsets[0]*boardSize) + offsets[1];
+
+  console.log ("In getTreasureIndex - pos is " + pos + "  New pos is " + newPos);
+
+  var i = 0;
+  var treasureFound = false;
+
+  while ((i < treasures.length) && (treasureFound == false))
+  {
+    if (treasures[i][TREASURE_INDEX_POSITION] == newPos)
+      treasureFound = true;
+    else
+      i++;
+  } // end while
+
+  if (treasureFound == true)
+    return i;
+  else {
+    return -1;    // no treasure in  pos passed in
+  }
+
+}  // end function
+
+// ------------------------------
+
+function deleteTreasure(pos)
+{
+  var index = getTreasureIndex(pos);  // returns -1 if no treasure
+
+  if (index >= 0) // treasure found
+  {
+    treasures.splice(index, 1);
+  }
+  else
+  {
+    console.log("No treasure at this pos " + pos);
+  }
+
 }
 
+// ---------------------------------------------------------------
 
 function getBadTreasure() {
   var lootAmount = Math.floor((Math.random() * 3 + 1));
@@ -1185,27 +1202,15 @@ function getSquareStatus(pos)
 
   // check if player is the center vs moving off center
 
-  console.log("------ In getSquareStatus -----------");
+  console.log("---------------------- In getSquareStatus --------------------------");
 
-  var checkIfInCenterSquare
-
-
-  var treasureType = 0;
-  var NPCNameNum;
   var row = Math.floor(pos/viewSize);
-
   // calculate offsets from center
   var offsets = getOffsets();
-
-  // ppp - bbb - zzz Anchor Pos is wrong  --------
-  // var anchorPos = pos + (hiddenPadding * boardSize) + ((((row+1) * hiddenPadding) - 1) * hiddenPadding);
   var anchorPos = pos + (hiddenPadding * boardSize) + (((row + 1) * 2 * hiddenPadding) - hiddenPadding);
-
   var newPos = anchorPos + (offsets[0]*boardSize) + offsets[1];
 
   console.log("Get Square Status - Current square is " + currentSquare + "  Pos is " + pos + "  Anchor pos is " + anchorPos + "  row offset is " + offsets[0] + "  Col offset is " + offsets[1] + "  New pos is " + newPos);
-
-  // console.log("In get square status square pos is " + pos + " - Actual pos is " + newPos);
 
   if (walls[newPos] == WALL)  // check for wall
     return SQ_STATUS_WALL;
@@ -1215,11 +1220,13 @@ function getSquareStatus(pos)
     if (locks[currentSquare] == 1)
       return SQ_STATUS_PAC_ON_RED_LOCK;
     // Check for Pac Man on a treasure
-    treasureType = checkForTreasure(pos);
 
-    if (treasureType > 0)
+    var index = getTreasureIndex(pos);  // returns -1 if no treasure
+
+    if (index >= 0)  // treasure found in this square)
     {
-      switch (treasureType)
+
+      switch (treasures[index][TREASURE_INDEX_TYPE])  // switch on treasure type
       {
         case TREASURE_TYPE_BAD:
           return SQ_STATUS_PAC_ON_TREASURE_BAD;
@@ -1244,9 +1251,12 @@ function getSquareStatus(pos)
 
     } // end if found treasure
 
-    NPCNameNum = checkForNPC(pos);
-    if (NPCNameNum > 0) {
-      switch (NPCNameNum) {
+    var npcIndex = getNPCIndex(pos);  // will return -1 if no npc in this pos
+
+    if (npcIndex >= 0)   // npc found
+    {
+
+      switch (NPCs[npcIndex][NPC_INDEX_NAME]) {
         case NPC_ICHABOD_TRISKET:
           return SQ_STATUS_PAC_ON_ICHABOD_TRISKET;
           break;
@@ -1255,9 +1265,9 @@ function getSquareStatus(pos)
           break;
         default:
 
-      } // END SWITCH for NPCNameNum
+      } // END SWITCH for npc
 
-    }  // end if NPCNameNum > 0
+    }  // end if npcIndex found
 
     return SQ_STATUS_PAC_ON_BLANK;
   }
@@ -1266,9 +1276,13 @@ function getSquareStatus(pos)
     return SQ_STATUS_RED_LOCK;
   // Pac Man not in this square --- Check for other conditions
 
-  treasureType = checkForTreasure(pos);
-  if (treasureType > 0) {
-    switch (treasureType) {
+  var index = getTreasureIndex(pos);  // returns -1 if no treasure
+
+  if (index >= 0) // treasure found
+  {
+
+    switch (treasures[index][TREASURE_INDEX_TYPE])  // switch on treasure type
+    {
       case TREASURE_TYPE_BAD:
         return SQ_STATUS_TREASURE_BAD;
         break;
@@ -1284,15 +1298,20 @@ function getSquareStatus(pos)
         return SQ_STATUS_RED_KEY;
         break;
 
-
       default:
 
     } // END SWITCH
 
   } // end if found treasure
-  NPCNameNum = checkForNPC(pos);
-  if (NPCNameNum > 0) {
-    switch (NPCNameNum) {
+
+  // NPCNameNum = checkForNPC(pos);
+
+  var npcIndex = getNPCIndex(pos);  // will return -1 if no npc in this pos
+
+  if (npcIndex >= 0) // npc found
+  {
+    switch (NPCs[npcIndex][NPC_INDEX_NAME])
+    {
       case NPC_ICHABOD_TRISKET:
         return SQ_STATUS_ICHABOD_TRISKET;
         break;
@@ -1302,90 +1321,11 @@ function getSquareStatus(pos)
       default:
     } // END SWITCH for NPCNameNum
 
-  }  // end if NPCNameNum > 0
-
-
-
-  // Check if a good friend in a square by itself ???
-  // NPCNameNum = checkForNPC(pos);
-  // if (NPCNameNum > 0) {
-  //   switch (NPCNameNum) {
-  //     case NPC_ICHABOD_TRISKET:
-  //       return SQ_STATUS_PAC_ON_ICHABOD_TRISKET;
-  //       break;
-  //
-  //     default:
-  //
-  //   } // END SWITCH for NPCNameNum
+  }  // end if npc found
 
   return SQ_STATUS_BLANK;
 
 } // end function get Square status
-
-// ---------------------------------------
-
-function checkForTreasure(pos)
-{
-  var i = 0;
-  // check for ghosts in specific order
-  var treasureFound = false;
-  var row = Math.floor(pos/viewSize);
-
-  // calculate offsets from center
-  var offsets = getOffsets();
-
-  var anchorPos = pos + (hiddenPadding * boardSize) + (((row + 1) * 2 * hiddenPadding) - hiddenPadding);
-  var newPos = anchorPos + (offsets[0]*boardSize) + offsets[1];
-
-  console.log("Check for NPC - Current square is " + currentSquare + "  Pos is " + pos + "  Anchor pos is " + anchorPos + "  row offset is " + offsets[0] + "  Col offset is " + offsets[1] + "  New pos is " + newPos);
-
-  // you always need to go through the entire array of treasures to check for special ones.
-  while ((treasureFound == false) && (i < treasures.length)) {
-    if (treasures[i][TREASURE_INDEX_POSITION] == newPos)
-      treasureFound = true;
-    else
-      i++;
-  }
-
-  if (treasureFound == true)
-    return treasures[i][TREASURE_INDEX_TYPE];
-  else
-    return 0;
-
-}
-
-// --------------------------------------------
-
-function checkForNPC(pos)
-{
-  var i = 0;
-  var NPCFound = false;
-
-  var row = Math.floor(pos/viewSize);
-
-  // calculate offsets from center
-  var offsets = getOffsets();
-
-  var anchorPos = pos + (hiddenPadding * boardSize) + (((row + 1) * 2 * hiddenPadding) - hiddenPadding);
-  var newPos = anchorPos + (offsets[0]*boardSize) + offsets[1];
-
-  console.log("Check for NPC - Current square is " + currentSquare + "  Pos is " + pos + "  Anchor pos is " + anchorPos + "  row offset is " + offsets[0] + "  Col offset is " + offsets[1] + "  New pos is " + newPos);
-
-  // Check for NPCs unti you found one, don't need to check the whole array
-  while ((NPCFound == false) && (i < NPCs.length)) {
-    if (NPCs[i][NPC_INDEX_POSITION] == newPos)
-      NPCFound = true;
-    else
-      i++;
-  }
-
-  // www
-  if (NPCFound == true)
-    return NPCs[i][NPC_INDEX_NAME];
-  else
-    return 0;
-
-}
 
 // ---------------------------------------
 
@@ -1412,10 +1352,10 @@ function createBoard() {
 
 function createTreasures()
 {
-  treasures.push([3, TREASURE_TYPE_GOOD])
-  treasures.push([5, TREASURE_TYPE_MEDIUM])
-  treasures.push([0, TREASURE_TYPE_BAD])
-  treasures.push([80, TREASURE_TYPE_RED_KEY])
+  treasures.push([3, TREASURE_TYPE_GOOD, TREASURE_ICON_1]);
+  treasures.push([5, TREASURE_TYPE_MEDIUM, TREASURE_ICON_2]);
+  treasures.push([0, TREASURE_TYPE_BAD, TREASURE_ICON_3]);
+  treasures.push([80, TREASURE_TYPE_RED_KEY, TREASURE_ICON_4]);
 }
 
   function createNPCs() {
@@ -1428,9 +1368,62 @@ function createTreasures()
 function createWalls()
 {
     walls = [0,0,1,0,0,0,1,0,0,0,0,1,1,0,1,1,0,0,0,0,0,1,0,1,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,1,1,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,1,0,0];
-
     locks = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,RED,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
-}
+
+    if (walls.length != (boardSize * boardSize))
+    {
+        // Exit and change the boardSize, use no walls, or accept random walls
+
+        var choice = prompt("Your walls array doesn't match the boardSize.  Enter 1 for no walls or Enter 2 for random walls.  Hitting cancel will lead to unpredictable results.", "1");
+
+        if (choice == null || choice == "")
+        { // user hit cancel, just continue and let the chips fall
+            return;
+        }
+        else   // user chose 1 or 2 or something else
+        {
+
+            var i;
+
+            switch (choice)
+            {
+              case "1":
+
+                walls = [];
+                for (i=0; i<(boardSize*boardSize); i++)
+                {
+                  walls.push(0);
+                }
+
+                break;
+
+              case "2":
+
+                walls = [];
+                for (i=0; i<(boardSize*boardSize); i++)
+                {
+                  var wallChance = Math.floor((Math.random() * 10)); // 10 numbers
+
+                  if (wallChance < WALL_CHANCE/10)
+                    walls.push(1);
+                  else
+                    walls.push(0);
+                } // end for loop
+
+                break;
+
+              default:
+
+                return; // user entered something bad
+
+            } // end switch
+
+        } // end else
+
+    } // end if bad boardsize
+
+
+  } // end function
 
 // ----------------------------------------
 
